@@ -1,5 +1,5 @@
 const Task = require('../Models/TaskModel');
-const Employee = require('../Models/EmployeeModel')
+const Employee = require('../Models/EmployeeModel');
 
 
    //Create a New Task:
@@ -57,14 +57,27 @@ exports.assignTaskToEmployee = async (req, res) => {
 
   //get all task
 
-  exports.getAllTasks = async (req, res) => {
-    try {
-      const tasks = await Task.find();
-      res.status(200).json({ tasks });
-    } catch (error) {
-      res.status(500).json({ message: 'Server error', error: error.message });
+ // Get all tasks with optional filtering by status
+
+exports.getAllTasks = async (req, res) => {
+  try {
+    // Extract the status query parameter
+    const { status } = req.query;
+    
+    // Create a filter object, add status filter if provided
+    const filter = {};
+    if (status) {
+      filter.status = status;
     }
-  };
+    
+    // Find tasks based on the filter
+    const tasks = await Task.find(filter);
+    res.status(200).json({ tasks });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 
   //get task by Id
 
@@ -84,11 +97,11 @@ exports.assignTaskToEmployee = async (req, res) => {
   
 
   
-  //update task 
+  //update task for employee
 
-  exports.updateTask = async (req, res) => {
+  exports.updateTaskStatus = async (req, res) => {
     const { taskId } = req.params;
-    const { title, description, status, deadline, project } = req.body;
+    const { status } = req.body;
   
     try {
       // Find the task by ID
@@ -97,21 +110,57 @@ exports.assignTaskToEmployee = async (req, res) => {
         return res.status(404).json({ message: 'Task not found' });
       }
   
-      // Update the task with the provided data
-      task.title = title || task.title;
-      task.description = description || task.description;
+      // Update status if not already "Done"
+      if (status === 'Done' && task.status !== 'Done') {
+        // Find the employee associated with the task
+        const employee = await Employee.findOne({ tasksAssigned: taskId });
+        if (employee) {
+          employee.performanceMetrics.tasksCompleted += 1;
+          await employee.save();
+        }
+      }
+  
+      // Allow only status update for employees
       task.status = status || task.status;
-      task.deadline = deadline || task.deadline;
-      task.project = project || task.project;
-      task.updatedAt = Date.now();  
+      task.updatedAt = Date.now();
   
       await task.save();
-      res.status(200).json({ message: 'Task updated successfully', task });
+      res.status(200).json({ message: 'Task status updated successfully', task });
     } catch (error) {
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   };
   
+  
+
+  //updateTask by admin
+
+  exports.updateTask = async (req, res) => {
+    const { taskId } = req.params;
+  const { title, description, deadline, project } = req.body;
+
+  try {
+    // Find the task by ID
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Allow only admin to update title, description, deadline, and project
+    task.title = title || task.title;
+    task.description = description || task.description;
+    task.deadline = deadline || task.deadline;
+    task.project = project || task.project;
+    task.updatedAt = Date.now();  
+
+    await task.save();
+    res.status(200).json({ message: 'Task details updated successfully', task });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+  };
+  
+
 
   //delete task 
   exports.deleteTask = async (req, res) => {
@@ -129,4 +178,30 @@ exports.assignTaskToEmployee = async (req, res) => {
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   };
-  
+
+
+
+  // Approve or reject a task by Admin
+exports.approveOrRejectTask = async (req, res) => {
+  const { taskId } = req.params;
+  const { approvalStatus } = req.body;
+  const adminId = req.user._id; // `req.user` contains authenticated admin info
+
+  try {
+    // Find the task by ID
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Update the task's approval status and reviewer
+    task.approvalStatus = approvalStatus;
+    task.reviewedBy = adminId;
+    task.updatedAt = Date.now();
+
+    await task.save();
+    res.status(200).json({ message: `Task ${approvalStatus.toLowerCase()} successfully`, task });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};

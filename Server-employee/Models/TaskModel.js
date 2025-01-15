@@ -26,6 +26,15 @@ const taskSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  approvalStatus: {
+    type: String,
+    enum: ['Pending', 'Approved', 'Rejected'],
+    default: 'Pending',
+  },
+  reviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Admin who reviewed the task
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -38,3 +47,4 @@ const taskSchema = new mongoose.Schema({
 const Task = mongoose.model('Task', taskSchema);
 
 module.exports = Task;
+

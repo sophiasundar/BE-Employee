@@ -10,6 +10,7 @@ require("dotenv").config();
 const userRoutes = require('./Routes/UserRoute');
 const employeeRoutes = require('./Routes/EmployeesRoute');
 const taskRoutes = require('./Routes/TaskRoute');
+const timelogRoutes = require('./Routes/TimeLogRoute');
 
 
 
@@ -33,7 +34,9 @@ app.use('/api/users', userRoutes);
 
 app.use('/api/record', employeeRoutes);
 
-app.use('/api/task', taskRoutes)
+app.use('/api/task', taskRoutes);
+
+app.use('/api/timelog', timelogRoutes);
 
 
 mongoose.connect(process.env.MONGO_URL,{

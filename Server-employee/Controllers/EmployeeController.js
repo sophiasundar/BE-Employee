@@ -1,7 +1,7 @@
 const Employee = require('../Models/EmployeeModel');
 const User = require('../Models/UserModel')
-const Task = require('../Models/TaskModel');
-const TimeLog = require('../Models/TimeModel');
+// const Task = require('../Models/TaskModel');
+// const TimeLog = require('../Models/TimeModel');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 
@@ -149,37 +149,4 @@ exports.deleteEmployee = async (req, res) => {
 };
 
 
-// Log time for an employee (Employee only)
-exports.logTimeForTask = async (req, res) => {
-  const { taskId, startTime, endTime } = req.body;
 
-  try {
-    const employee = await Employee.findOne({ 'user': req.user._id });
-    
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
-
-    const task = await Task.findById(taskId);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-
-    const timeLog = new TimeLog({
-      task: taskId,
-      user: req.user._id,
-      startTime,
-      endTime,
-    });
-
-    await timeLog.save();
-
-    // Update total hours worked for the employee
-    employee.performanceMetrics.totalHoursWorked += timeLog.duration;
-    await employee.save();
-
-    res.status(201).json({ message: 'Time logged successfully', timeLog });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};

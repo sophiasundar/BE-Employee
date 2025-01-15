@@ -8,7 +8,9 @@ const {
   getAllTasks,
   getTaskById,
   updateTask,
-  deleteTask
+  updateTaskStatus,
+  deleteTask,
+  approveOrRejectTask
 } = require('../Controllers/TaskController');
 
 // Task Management Routes
@@ -29,8 +31,17 @@ router.get('/:taskId', authenticate, getTaskById);
 // Update a task (Admin only)
 router.put('/:taskId', authenticate, roleMiddleware('admin'), updateTask);
 
+//Update a task (Employee only)
+router.put('/status/:taskId', authenticate, roleMiddleware('employee'), updateTaskStatus);
+
+
 // Delete a task (Admin only)
 router.delete('/:taskId', authenticate, roleMiddleware('admin'), deleteTask);
+
+// Approve or reject a task (Admin only)
+router.put('/approve-reject/:taskId', authenticate, roleMiddleware('admin'), approveOrRejectTask);
+
+
 
 module.exports = router;
 

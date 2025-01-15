@@ -7,9 +7,16 @@ exports.authenticate = (req, res, next) => {
         if (!token) {
           return res.status(401).json({ message: 'No token, authorization denied' });
         }
-    
+
         const decoded = jwt.verify(token, process.env.SECRET_KEY);
-        req.user = decoded;
+        req.user = { _id: decoded.userId, email: decoded.email, role: decoded.role }
+    
+      
+
+        if (!req.user || !req.user._id) {
+          return res.status(401).json({ message: 'User information missing from token' });
+        }
+        
         next();
       } catch (error) {
         res.status(401).json({ message: 'Token is not valid' });

@@ -25,8 +25,7 @@ router.put('/employees/:id', authenticate, roleMiddleware('admin'), updateEmploy
 router.delete('/employees/:id', authenticate, roleMiddleware('admin'), deleteEmployee); 
 
 
-// Log time for an employee (Employee only)
-router.post('/employees/log-time', authenticate, logTimeForTask); 
+
 
 
 module.exports = router;
