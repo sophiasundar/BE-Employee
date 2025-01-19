@@ -59,24 +59,31 @@ exports.assignTaskToEmployee = async (req, res) => {
 
  // Get all tasks with optional filtering by status
 
-exports.getAllTasks = async (req, res) => {
+ exports.getAllTasks = async (req, res) => {
   try {
-    // Extract the status query parameter
     const { status } = req.query;
-    
-    // Create a filter object, add status filter if provided
     const filter = {};
     if (status) {
       filter.status = status;
     }
-    
-    // Find tasks based on the filter
-    const tasks = await Task.find(filter);
+
+    const tasks = await Task.find(filter)
+      .populate({
+        path: 'assignedTo', // Populate the assignedTo field (Employee)
+        populate: { path: 'user', select: 'name' } // Populate the user's name from the Employee model
+      });
+
+    tasks.forEach(task => {
+      console.log(task.assignedTo && task.assignedTo.user ? task.assignedTo.user.name : 'No assigned user');
+    });
+
     res.status(200).json({ tasks });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+
 
 
   //get task by Id

@@ -15,9 +15,9 @@ const taskSchema = new mongoose.Schema({
     enum: ['To-Do', 'In Progress', 'Done'],
     default: 'To-Do',
   },
-  assignedTo: {
+ assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Employee', 
   },
   deadline: {
     type: Date,

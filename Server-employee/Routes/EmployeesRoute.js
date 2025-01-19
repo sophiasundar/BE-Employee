@@ -4,7 +4,7 @@ const { authenticate } = require('../Middleware/Authentication');
 const roleMiddleware = require('../Middleware/Role');
 const {
   getEmployees,getEmployeeDetails,createEmployee,updateEmployee,
-  deleteEmployee,logTimeForTask,
+  deleteEmployee,
 } = require('../Controllers/EmployeeController');
 
 // Employee Management Routes
@@ -13,7 +13,7 @@ const {
 router.get('/employees', authenticate, roleMiddleware('admin'), getEmployees); 
 
 // Get an employee's record (Admin or Employee) 
-router.get('/employees/:id', authenticate, getEmployeeDetails); 
+router.get('/employees/:userId', authenticate, getEmployeeDetails);
 
 // Create a new employee (Admin only) 
 router.post('/employees', authenticate, roleMiddleware('admin'), createEmployee); 

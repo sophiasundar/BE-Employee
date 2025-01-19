@@ -8,7 +8,10 @@ const bcrypt = require('bcrypt');
 // Get all employees records (Admin only)
 exports.getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find().populate('user', 'name email');
+    const employees = await Employee.find()
+    .populate('user', 'name email')
+    .populate('tasksAssigned')
+      .populate('timeLogs');
     res.status(200).json(employees);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -16,9 +19,11 @@ exports.getEmployees = async (req, res) => {
 };
 
 // Get an employee's record (Admin or Employee)
+
 exports.getEmployeeDetails = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id)
+    // Find the employee by the user ID from the User model
+    const employee = await Employee.findOne({ user: req.params.userId })
       .populate('user', 'name email')
       .populate('tasksAssigned')
       .populate('timeLogs');
@@ -38,6 +43,7 @@ exports.getEmployeeDetails = async (req, res) => {
   }
 };
 
+
 // Create a new employee (Admin only)
 // Configure the email transport
 const transporter = nodemailer.createTransport({
@@ -52,13 +58,12 @@ const transporter = nodemailer.createTransport({
     const { name, email, position, department } = req.body;
   
     try {
-
-        // Check if the email already exists in the User collection
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-          return res.status(400).json({ message: 'User with this email already exists' });
-        }
-      
+      // Check if the email already exists in the User collection
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+    
       // Generate a random password
       const randomPassword = Math.random().toString(36).slice(-8);
   
@@ -73,18 +78,22 @@ const transporter = nodemailer.createTransport({
         role: 'employee',
       });
   
-      await newUser.save();
+      const createdUser = await newUser.save();
   
-      // Create a new employee
+      // Create a new employee linked to the user
       const newEmployee = new Employee({
-        user: newUser._id,
+        user: createdUser._id,
         position,
         department,
       });
   
-      await newEmployee.save();
+      const createdEmployee = await newEmployee.save();
   
-      // email options
+      // Update the User with the employeeId
+      createdUser.employee = createdEmployee._id;
+      await createdUser.save();
+  
+      // Email options
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
@@ -97,7 +106,7 @@ const transporter = nodemailer.createTransport({
         if (error) {
           return res.status(500).json({ message: 'Error sending email', error: error.message });
         }
-        res.status(201).json({ message: 'Employee created successfully', employee: newEmployee });
+        res.status(201).json({ message: 'Employee created successfully', employee: createdEmployee });
       });
   
     } catch (error) {
