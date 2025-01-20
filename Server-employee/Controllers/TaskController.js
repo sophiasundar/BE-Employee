@@ -55,7 +55,7 @@ exports.assignTaskToEmployee = async (req, res) => {
   const { taskCode, employeeEmail } = req.body;  // Using taskCode and employeeEmail
 
   try {
-    // Find the task by code
+    // Find the task by task code
     const task = await Task.findOne({ taskCode });
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -69,7 +69,7 @@ exports.assignTaskToEmployee = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Assuming the user has a reference to the employee record
+    //the user has a reference to the employee record
     const employee = await Employee.findOne({ _id: user.employee });
     console.log('Employee:', employee); 
 
