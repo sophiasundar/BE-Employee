@@ -19,6 +19,10 @@ const taskSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Employee', 
   },
+  taskCode: { 
+    type: String, 
+    unique: true 
+  }, 
   deadline: {
     type: Date,
   },
@@ -42,6 +46,14 @@ const taskSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
   },
+});
+
+taskSchema.pre('save', function (next) {
+  if (this.isNew) {
+    // Generate task code by concatenating task name and timestamp or unique number
+    this.taskCode = `${this.title.replace(/\s+/g, '-').toUpperCase()}-${Date.now()}`;
+  }
+  next();
 });
 
 const Task = mongoose.model('Task', taskSchema);

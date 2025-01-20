@@ -1,58 +1,122 @@
 const Task = require('../Models/TaskModel');
 const Employee = require('../Models/EmployeeModel');
+const User = require('../Models/UserModel');
+const nodemailer = require('nodemailer');
 
-
-   //Create a New Task:
+   //Create a New Task: assigned to is not needed
 
    exports.createTask = async (req, res) => {
-     const { title, description, status, assignedTo, deadline, project } = req.body;
-   
-     try {
-       const newTask = new Task({
-         title,
-         description,
-         status,
-         assignedTo,
-         deadline,
-         project,
-       });
-   
-       await newTask.save();
-       res.status(201).json({ message: 'Task created successfully', task: newTask });
-     } catch (error) {
-       res.status(500).json({ message: 'Server error', error: error.message });
-     }
-   };
-   
-//Assign Task to Employee
-
-exports.assignTaskToEmployee = async (req, res) => {
-    const { taskId, employeeId } = req.body;
+    const { title, description, status, deadline, project, employeeEmail } = req.body;
   
     try {
-      // Find the task by ID
-      const task = await Task.findById(taskId);
-      if (!task) {
-        return res.status(404).json({ message: 'Task not found' });
+      // Ensure the employeeEmail is provided
+      if (!employeeEmail) {
+        return res.status(400).json({ message: 'Employee email is required' });
       }
   
-      // Assign the task to the employee (set the assignedTo field to employeeId)
-      task.assignedTo = employeeId;
-      task.status = 'In Progress';  // Optionally, change status when task is assigned
+      // Find the user (employee) by email
+      const user = await User.findOne({ email: employeeEmail });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
   
-      await task.save();
-
-        // Update the employee's tasksAssigned array
-        await Employee.findByIdAndUpdate(employeeId, { $push: { tasksAssigned: taskId } });
-        const updatedEmployee = await Employee.findById(employeeId);
-        console.log(updatedEmployee.tasksAssigned); // Should show the task ID
-        
-
-      res.status(200).json({ message: 'Task assigned to employee successfully', task });
+      // Assuming the user document has a reference to the employee document
+      const employee = await Employee.findOne({ _id: user.employee });
+      if (!employee) {
+        return res.status(404).json({ message: 'Employee not found' });
+      }
+  
+      // Create the new task with the assignedTo field set to the employee's ID
+      const newTask = new Task({
+        title,
+        description,
+        status,
+        deadline,
+        project,
+        assignedTo: employee._id,  // Assign the task to the employee's ID
+      });
+  
+      await newTask.save();
+  
+      // Update the employee's tasksAssigned array
+      await Employee.findByIdAndUpdate(employee._id, { $push: { tasksAssigned: newTask._id } });
+  
+      res.status(201).json({ message: 'Task created successfully', task: newTask });
     } catch (error) {
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   };
+  
+   
+//Assign Task to Employee
+
+
+exports.assignTaskToEmployee = async (req, res) => {
+  const { taskCode, employeeEmail } = req.body;  // Using taskCode and employeeEmail
+
+  try {
+    // Find the task by code
+    const task = await Task.findOne({ taskCode });
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Find the user (employee) by email in the User model
+    const user = await User.findOne({ email: employeeEmail });
+    console.log('User:', user); 
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Assuming the user has a reference to the employee record
+    const employee = await Employee.findOne({ _id: user.employee });
+    console.log('Employee:', employee); 
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Assign the task to the employee (set the assignedTo field to employee's ID)
+    task.assignedTo = employee._id;
+    task.status = 'In Progress';  // Optionally, change status when task is assigned
+
+    await task.save();
+
+    // Update the employee's tasksAssigned array
+    await Employee.findByIdAndUpdate(employee._id, { $push: { tasksAssigned: task._id } });
+
+    // Email integration: Send email notification to the employee
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail', 
+      auth: {
+        user:  process.env.EMAIL_USER, 
+        pass:    process.env.EMAIL_PASS, 
+      }
+    });
+
+    const mailOptions = {
+      from: 'your-email@gmail.com',
+      to: employeeEmail,
+      subject: 'New Task Assigned',
+      text: `Hello ${user.name},\n\nYou have been assigned a new task.\n\nTask Title: ${task.title}\nTask Description: ${task.description}\nDeadline: ${task.deadline}\n\nPlease log in to your account to view more details.\n\nBest regards,\nYour Company`
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Error sending email:', error);
+      } else {
+        console.log('Email sent:', info.response);
+      }
+    });
+
+    res.status(200).json({ message: 'Task assigned to employee successfully', task });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+
 
 
   //get all task
@@ -67,14 +131,22 @@ exports.assignTaskToEmployee = async (req, res) => {
       filter.status = status;
     }
 
+    // Fetch all tasks, including necessary fields and populate references
     const tasks = await Task.find(filter)
+      .select('taskCode title description status deadline project approvalStatus reviewedBy createdAt updatedAt')  // Include all required fields
       .populate({
-        path: 'assignedTo', // Populate the assignedTo field (Employee)
-        populate: { path: 'user', select: 'name' } // Populate the user's name from the Employee model
+        path: 'assignedTo',
+        select: 'user', // If you need employee details, modify as needed
+        populate: { path: 'user', select: 'name email' } // Populate the user's details from Employee model
+      })
+      .populate({
+        path: 'reviewedBy', // Populate reviewedBy with User data
+        select: 'name email'  // Populate only the name and email of the reviewer (admin)
       });
 
+    // Log task information to check populated data
     tasks.forEach(task => {
-      console.log(task.assignedTo && task.assignedTo.user ? task.assignedTo.user.name : 'No assigned user');
+      console.log(`Task Code: ${task.taskCode}, Assigned To: ${task.assignedTo ? task.assignedTo.user.name : 'No Assigned User'}`);
     });
 
     res.status(200).json({ tasks });
@@ -82,6 +154,8 @@ exports.assignTaskToEmployee = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+
 
 
 
