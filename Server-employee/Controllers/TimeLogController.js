@@ -1,25 +1,33 @@
 const TimeLog = require('../Models/TimeModel');
 const Employee = require('../Models/EmployeeModel');
+const Task = require('../Models/TaskModel')
 
 // Create a new time log entry
 exports.createTimeLog = async (req, res) => {
   try {
-    const { task, startTime } = req.body;
-    const userId = req.user._id;
+    const { taskCode, startTime } = req.body; 
+    const userId = req.user._id; //  user is authenticated and we can access user ID from req.user
 
     if (!userId) {
       return res.status(400).json({ message: 'User not authenticated' });
     }
 
+    // Ensure task exists by taskCode
+    const task = await Task.findOne({ taskCode });
+    if (!task) {
+      return res.status(404).json({ message: 'Task with the provided task code not found' });
+    }
+
+    // Create a new time log entry
     const newTimeLog = new TimeLog({
-      task,
+      task: task._id, // Store the ObjectId of the found task
       user: userId,
       startTime,
     });
 
     await newTimeLog.save();
 
-    // Find the employee and update their time logs and total hours worked
+    // Update employee's time logs and total hours worked
     const employee = await Employee.findOne({ user: userId });
     if (employee) {
       employee.timeLogs.push(newTimeLog._id);
@@ -29,9 +37,11 @@ exports.createTimeLog = async (req, res) => {
 
     res.status(201).json({ message: 'Time log created successfully', timeLog: newTimeLog });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Failed to create time log', error });
   }
 };
+
 
 
 // Update a time log entry with end time

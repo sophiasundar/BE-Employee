@@ -191,17 +191,18 @@ exports.assignTaskToEmployee = async (req, res) => {
         return res.status(404).json({ message: 'Task not found' });
       }
   
-      // Update status if not already "Done"
+      // Check if the status is being changed to "Done"
       if (status === 'Done' && task.status !== 'Done') {
         // Find the employee associated with the task
         const employee = await Employee.findOne({ tasksAssigned: taskId });
         if (employee) {
+          // Increment the tasksCompleted only if it's not already marked as "Done"
           employee.performanceMetrics.tasksCompleted += 1;
           await employee.save();
         }
       }
   
-      // Allow only status update for employees
+      // Allow status update (without incrementing task completion count)
       task.status = status || task.status;
       task.updatedAt = Date.now();
   
@@ -211,6 +212,8 @@ exports.assignTaskToEmployee = async (req, res) => {
       res.status(500).json({ message: 'Server error', error: error.message });
     }
   };
+  
+  
   
   
 

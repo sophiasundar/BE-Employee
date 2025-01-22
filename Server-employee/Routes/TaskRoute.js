@@ -25,13 +25,13 @@ router.put('/assign', authenticate, roleMiddleware('admin'), assignTaskToEmploye
 router.get('/', authenticate, roleMiddleware('admin'), getAllTasks);
 
 // Get a task by ID (Admin or Employee)
-router.get('/:taskId', authenticate, getTaskById);
+router.get('/:taskId', authenticate, roleMiddleware('employee'), getTaskById);
 
 
 // Update a task (Admin only) ✔️
 router.put('/:taskId', authenticate, roleMiddleware('admin'), updateTask);
 
-//Update a task (Employee only)
+//Update a task (Employee only)✔️
 router.put('/status/:taskId', authenticate, roleMiddleware('employee'), updateTaskStatus);
 
 
