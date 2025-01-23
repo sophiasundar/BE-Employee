@@ -16,7 +16,7 @@ router.post('/create', authenticate, roleMiddleware('employee'), createTimeLog);
 router.put('/update/:id', authenticate, roleMiddleware('employee'), updateTimeLog);
 
 // Get time logs for the logged-in user (Employee or Admin)
-router.get('/user', authenticate, getTimeLogs);
+router.get('/user', authenticate, roleMiddleware('employee'), getTimeLogs);
 
 // Get all time logs (Admin only)
 router.get('/all', authenticate, roleMiddleware('admin'), getAllTimeLogs);
