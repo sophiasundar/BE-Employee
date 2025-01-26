@@ -265,27 +265,65 @@ exports.assignTaskToEmployee = async (req, res) => {
 
 
 
-  // Approve or reject a task by Admin
+// Approve or reject a task by Admin
+
+// Approve or Reject Task
 exports.approveOrRejectTask = async (req, res) => {
-  const { taskId } = req.params;
+  const { id } = req.params;
   const { approvalStatus } = req.body;
-  const adminId = req.user._id; // `req.user` contains authenticated admin info
+
+  if (!['Approved', 'Rejected'].includes(approvalStatus)) {
+    return res.status(400).json({ message: 'Invalid approval status' });
+  }
 
   try {
-    // Find the task by ID
-    const task = await Task.findById(taskId);
+    const task = await Task.findById(id);
+
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Update the task's approval status and reviewer
+    // Check the current date and task deadline
+    const currentDate = new Date();
+    const deadline = new Date(task.deadline);
+
+    // If the task status is "To-Do," ensure it is assigned to an employee
+    if (task.status === 'To-Do' && !task.assignedTo) {
+      return res.status(400).json({
+        message: 'Task is in "To-Do" status and must be assigned to an employee before approval or rejection.',
+      });
+    }
+
+    if (approvalStatus === 'Approved') {
+      // Only approve if task is completed (status: Done) and before the deadline
+      if (task.status !== 'Done') {
+        return res.status(400).json({ message: 'Task must be completed (status: Done) to approve.' });
+      }
+      if (deadline < currentDate) {
+        return res.status(400).json({ message: 'Cannot approve a task past its deadline.' });
+      }
+    } else if (approvalStatus === 'Rejected') {
+      // Reject if the task is still in progress or incomplete
+      if (task.status === 'In Progress' || task.status === 'To-Do' || task.status !== 'Done') {
+        return res.status(400).json({
+          message: 'Task must be completed (status: Done) to approve. Rejecting as it is not yet completed.',
+        });
+      }
+    }
+
+    // Update task approval status
     task.approvalStatus = approvalStatus;
-    task.reviewedBy = adminId;
+    task.reviewedBy = req.user.id; // Extract adminId from the verified token
     task.updatedAt = Date.now();
 
     await task.save();
-    res.status(200).json({ message: `Task ${approvalStatus.toLowerCase()} successfully`, task });
+    return res.status(200).json({ message: `Task ${approvalStatus.toLowerCase()} successfully.`, task });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
+
+
+
+

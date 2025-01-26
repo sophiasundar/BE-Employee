@@ -39,8 +39,8 @@ router.put('/status/:taskId', authenticate, roleMiddleware('employee'), updateTa
 router.delete('/:taskId', authenticate, roleMiddleware('admin'), deleteTask);
 
 // Approve or reject a task (Admin only)
-router.put('/approve-reject/:taskId', authenticate, roleMiddleware('admin'), approveOrRejectTask);
 
+router.put('/approve-reject/:id', authenticate, roleMiddleware('admin'), approveOrRejectTask);
 
 
 module.exports = router;
